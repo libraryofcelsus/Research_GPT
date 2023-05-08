@@ -27,7 +27,9 @@ Aetherius GitHub: https://github.com/libraryofcelsus/Aetherius_AI_Assistant
 
 9. Install OpenAi's packages with **pip install openai**
 
-10. Copy your OpenAI api key to key_openai.txt
+10. Copy your OpenAI api key to key_openai.txt (https://openai.com/blog/openai-api)
 
-11. Run Research GPT with **python Research_GPT.py
+11. Copy you Bing api key to key_bing.txt (https://www.microsoft.com/en-us/bing/apis/bing-web-search-api)
+
+12. Run Research GPT with **python Research_GPT.py
 
