@@ -8,7 +8,18 @@ from time import time, sleep
 import datetime
 from uuid import uuid4
 import concurrent.futures
+import requests
 
+
+def open_file(filepath):
+    with open(filepath, 'r', encoding='utf-8') as infile:
+        return infile.read()
+        
+        
+def save_file(filepath, content):
+    with open(filepath, 'w', encoding='utf-8') as outfile:
+        outfile.write(content)
+        
 
 def chatgpt200_completion(messages, model="gpt-3.5-turbo", temp=0.2):
     max_retry = 7
@@ -82,14 +93,30 @@ def chatgpt_tasklist_completion(messages, model="gpt-4", temp=0.3):
             sleep(2 ** (retry - 1) * 5)
 
 
-def open_file(filepath):
-    with open(filepath, 'r', encoding='utf-8') as infile:
-        return infile.read()
-        
-        
-def save_file(filepath, content):
-    with open(filepath, 'w', encoding='utf-8') as outfile:
-        outfile.write(content)
+def bing_search(query):
+    subscription_key = open_file('key_bing.txt')
+    assert subscription_key
+    search_url = "https://api.bing.microsoft.com/v7.0/search"
+
+    headers = {"Ocp-Apim-Subscription-Key": subscription_key}
+    params = {"q": query, "textDecorations": True, "textFormat": "HTML"}
+
+    response = requests.get(search_url, headers=headers, params=params)
+    response.raise_for_status()
+    search_results = response.json()
+    return search_results
+    
+    
+def list_results1(results):
+    items = ['<li>' + item['name'] + '</li>' for item in results(["url"], ["name"], ["snippet"])]
+    html = '<ul>{}</ul>'.format(''.join(items))
+    print(html)
+
+
+def list_results(results):
+    items = ['<li>' + item['name'] + '</li>' for item in results['value']]
+    html = '<ul>{}</ul>'.format(''.join(items))
+    print(html)
 
 
 if __name__ == '__main__':
@@ -126,7 +153,6 @@ if __name__ == '__main__':
         tasklist.append({'role': 'assistant', 'content': "List of Semantic Search Terms: "})
         tasklist_output = chatgpt200_completion(tasklist)
     #    print(tasklist_output)
-
        # # # Inner Monologue Generation
         conversation.append({'role': 'assistant', 'content': "Other possible user meanings: %s" % tasklist_output})
         conversation.append({'role': 'assistant', 'content': "USER MESSAGE: %s;\nBased on the user, %s's message, compose a brief silent soliloquy as an inner monologue that reflects on your deepest contemplations in relation to the user's message.\n\nINNER_MONOLOGUE: " % (a, username)})
@@ -173,13 +199,24 @@ if __name__ == '__main__':
                             conversation.append({'role': 'user', 'content': "Task list:\n%s" % master_tasklist_output}),
                             conversation.append({'role': 'assistant', 'content': "Bot %s: I have studied the given tasklist.  What is my assigned task?" % task_counter}),
                             conversation.append({'role': 'user', 'content': "Bot %s's Assigned task: %s" % (task_counter, line)}),
-                            conversation.append({'role': 'assistant', 'content': "Bot %s:" % task_counter}),
+                            results := bing_search(line),
+                            rows := "\n".join(["""<tr>
+                                                <td><a href=\"{0}\">{1}</a></td>
+                                                <td>{2}</td>
+                                                </tr>""".format(v["url"], v["name"], v["snippet"])
+                                            for v in results["webPages"]["value"]]),
+                            table := "<table>{0}</table>".format(rows),
+                            conversation.append({'role': 'assistant', 'content': "WEBSEARCH: %s" % table}),
+                            conversation.append({'role': 'user', 'content': "Bot %s Task Reinitialization: %s" % (task_counter, line)}),
+                            conversation.append({'role': 'assistant', 'content': "Bot %s's Response:" % task_counter}),
                             task_completion := chatgpt35_completion(conversation),
                             conversation.clear(),
                             tasklist_completion.append({'role': 'assistant', 'content': "COMPLETED TASK:\n%s" % task_completion}),
-                            tasklist_log.append({'role': 'user', 'content': "ASSIGNED TASK:\n%s" % line}),
-                            tasklist_log.append({'role': 'assistant', 'content': "COMPLETED TASK:\n%s" % task_completion}),
+                            tasklist_log.append({'role': 'user', 'content': "ASSIGNED TASK:\n%s\n\n" % line}),
+                            tasklist_log.append({'role': 'assistant', 'content': "WEBSEARCH:\n%s\n\n" % table}),
+                            tasklist_log.append({'role': 'assistant', 'content': "COMPLETED TASK:\n%s\n\n" % task_completion}),
                             print(line),
+                            print(table),
                             print(task_completion),
                         ) if line != "None" else tasklist_completion,
                         line, task_counter, conversation.copy(), []
