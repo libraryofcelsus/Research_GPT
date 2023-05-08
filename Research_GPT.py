@@ -106,17 +106,7 @@ def bing_search(query):
     search_results = response.json()
     return search_results
     
-    
-def list_results1(results):
-    items = ['<li>' + item['name'] + '</li>' for item in results(["url"], ["name"], ["snippet"])]
-    html = '<ul>{}</ul>'.format(''.join(items))
-    print(html)
 
-
-def list_results(results):
-    items = ['<li>' + item['name'] + '</li>' for item in results['value']]
-    html = '<ul>{}</ul>'.format(''.join(items))
-    print(html)
 
 
 if __name__ == '__main__':
@@ -171,7 +161,7 @@ if __name__ == '__main__':
         message_two = output_two
         print('\n\nINTUITION: %s' % output_two)
         output_two_log = f'\nUSER: {a}\n\n{bot_name}: {output_two}'
-        # # Test for basic Autonomous Tasklist Generation and Task Completion
+        # # Generate Asynchronous Research Task list
         master_tasklist.append({'role': 'system', 'content': "You are a stateless task list coordinator. Your job is to take the user's input and transform it into a list of independent research queries that can be executed by separate AI agents in a cluster computing environment. The other asynchronous Ai agents are also stateless and cannot communicate with each other or the user during task execution. Exclude tasks involving final product production, hallucinations, user communication, or checking work with other agents. Respond using the following format: '- [task]'"})
         master_tasklist.append({'role': 'user', 'content': "USER FACING CHATBOT'S INTUITIVE ACTION PLAN:\n%s" % output_two})
         master_tasklist.append({'role': 'user', 'content': "USER INQUIRY:\n%s" % a})
@@ -179,26 +169,31 @@ if __name__ == '__main__':
         master_tasklist.append({'role': 'assistant', 'content': "TASK LIST:"})
         master_tasklist_output = chatgpt_tasklist_completion(master_tasklist)
         print(master_tasklist_output)
+        # # Start Conversation list for Final Response Module
         tasklist_completion.append({'role': 'system', 'content': "You are the final response module of a cluster compute Ai-Chatbot. Your job is to take the completed task list, and give a verbose response to the end user in accordance with their initial request."})
         tasklist_completion.append({'role': 'user', 'content': "%s" % master_tasklist_output})
         task = {}
         task_result = {}
         task_result2 = {}
         task_counter = 1
-        # # Split bullet points into separate lines to be used as individual queries
+        # # Split bullet points into separate lines to be used as individual tasks
         lines = master_tasklist_output.splitlines()
         print('\n\nSYSTEM: Would you like to autonomously complete this task list?\n        Press Y for yes or N for no.')
         user_input = input("'Y' or 'N': ")
         if user_input == 'y':
+            # # Start Asynchronous Processing with concurrent.futures library
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 futures = [
                     executor.submit(
                         lambda line, task_counter, conversation, tasklist_completion: (
+                            # # Update Final Response Module with Task
                             tasklist_completion.append({'role': 'user', 'content': "ASSIGNED TASK:\n%s" % line}),
+                            # # Start Sub-Module for asynchronous task completion
                             conversation.append({'role': 'system', 'content': "You are a sub-module for an Autonomous Ai-Chatbot. You are one of many agents in a chain. You are to take the given task and complete it in its entirety. Take other tasks into account when formulating your answer."}),
                             conversation.append({'role': 'user', 'content': "Task list:\n%s" % master_tasklist_output}),
                             conversation.append({'role': 'assistant', 'content': "Bot %s: I have studied the given tasklist.  What is my assigned task?" % task_counter}),
                             conversation.append({'role': 'user', 'content': "Bot %s's Assigned task: %s" % (task_counter, line)}),
+                            # # Websearch with Bing Api
                             results := bing_search(line),
                             rows := "\n".join(["""<tr>
                                                 <td><a href=\"{0}\">{1}</a></td>
@@ -206,12 +201,15 @@ if __name__ == '__main__':
                                                 </tr>""".format(v["url"], v["name"], v["snippet"])
                                             for v in results["webPages"]["value"]]),
                             table := "<table>{0}</table>".format(rows),
+                            # # Update Conversation with Websearch
                             conversation.append({'role': 'assistant', 'content': "WEBSEARCH: %s" % table}),
                             conversation.append({'role': 'user', 'content': "Bot %s Task Reinitialization: %s" % (task_counter, line)}),
                             conversation.append({'role': 'assistant', 'content': "Bot %s's Response:" % task_counter}),
                             task_completion := chatgpt35_completion(conversation),
                             conversation.clear(),
+                            # # Update Final Response Module with Completed Task
                             tasklist_completion.append({'role': 'assistant', 'content': "COMPLETED TASK:\n%s" % task_completion}),
+                            # # conversation log file
                             tasklist_log.append({'role': 'user', 'content': "ASSIGNED TASK:\n%s\n\n" % line}),
                             tasklist_log.append({'role': 'assistant', 'content': "WEBSEARCH:\n%s\n\n" % table}),
                             tasklist_log.append({'role': 'assistant', 'content': "COMPLETED TASK:\n%s\n\n" % task_completion}),
@@ -223,10 +221,12 @@ if __name__ == '__main__':
                     )
                     for task_counter, line in enumerate(lines)
                 ]
+            # # Generate Final Output with Final Response Module    
             tasklist_completion.append({'role': 'user', 'content': "Take the given set of tasks and completed responses and transmute them into a verbose response for the end user in accordance with their request. The end user is both unaware and unable to see any of your research. User's initial request: %s" % a})
             print('\n\nGenerating Final Output...')
             final_response_complete = chatgpt_tasklist_completion(tasklist_completion)
             print('\nFINAL OUTPUT:\n%s' % final_response_complete)
+            # # Save Log
             complete_message = f'\nUSER: {a}\n\nINNER_MONOLOGUE: {output_one}\n\nINTUITION: {output_two}\n\n{bot_name}: {tasklist_log}\n\nFINAL OUTPUT: {final_response_complete}'
             filename = '%s_chat.txt' % timestamp
             save_file('logs/complete_chat_logs/%s' % filename, complete_message)
