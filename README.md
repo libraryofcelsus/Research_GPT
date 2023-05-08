@@ -1,5 +1,5 @@
 # Research_GPT
-Simple example of autonomous research ran in parallel for cluster compute from my Aetherius Ai Assistant project.  Mainly meant for others to use in their projects.
+Simple example of autonomous research ran in parallel for an eventual cluster compute solution from my Aetherius Ai Assistant project.  Mainly meant for others to use in their projects.
 
 **Websearch Implemented!**
 
