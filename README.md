@@ -1,5 +1,5 @@
 # Research_GPT
-Simple one-shot example of autonomous research from my Aetherius Ai Assistant project.  Mainly meant for others to use in their projects.
+Simple example of autonomous research from my Aetherius Ai Assistant project.  Mainly meant for others to use in their projects.
 
 Websearch coming soon
 
