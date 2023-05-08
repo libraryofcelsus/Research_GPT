@@ -5,6 +5,8 @@ Websearch coming soon
 
 Aetherius GitHub: https://github.com/libraryofcelsus/Aetherius_AI_Assistant
 
+![Example](http://www.libraryofcelsus.com/wp-content/uploads/2023/05/Research_GPT-1.gif)
+
 ## Install Guide
 
 1. Install Git: https://git-scm.com/ (Git can be skipped by downloading the repo as a zip file under the green code button)
