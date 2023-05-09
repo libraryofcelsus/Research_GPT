@@ -4,6 +4,7 @@ Simple example of autonomous research ran in parallel for an eventual cluster co
 **Websearch Implemented!**
 
 **Change Log**
+
 Version 0.11
 
 -Research GPT now decides for itself if it should conduct a web search or not.
