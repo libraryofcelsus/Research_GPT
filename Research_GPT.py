@@ -75,6 +75,28 @@ def chatgpt35_completion(messages, model="gpt-3.5-turbo", temp=0.3):
             sleep(2 ** (retry - 1) * 5)
             
             
+def chatgptyesno_completion(messages, model="gpt-3.5-turbo", temp=0.1):
+    max_retry = 7
+    retry = 0
+    while True:
+        try:
+            response = openai.ChatCompletion.create(model=model, messages=messages, max_tokens=1)
+            text = response['choices'][0]['message']['content']
+            temperature = temp
+        #    filename = '%s_chat.txt' % time()
+        #    if not os.path.exists('chat_logs'):
+        #        os.makedirs('chat_logs')
+        #    save_file('chat_logs/%s' % filename, str(messages) + '\n\n==========\n\n' + text)
+            return text
+        except Exception as oops:
+            retry += 1
+            if retry >= max_retry:
+                print(f"Exiting due to an error in ChatGPT: {oops}")
+                exit(1)
+            print(f'Error communicating with OpenAI: "{oops}" - Retrying in {2 ** (retry - 1) * 5} seconds...')
+            sleep(2 ** (retry - 1) * 5)
+            
+            
 def chatgpt_tasklist_completion(messages, model="gpt-4", temp=0.3):
     max_retry = 7
     retry = 0
@@ -106,6 +128,39 @@ def bing_search(query):
     search_results = response.json()
     return search_results
     
+    
+def bing_query(webyesno):
+    if webyesno == 'YES':
+        print('Websearch Needed')
+        results = bing_search(line)
+        rows = "\n".join(["""<tr>
+                            <td><a href=\"{0}\">{1}</a></td>
+                            <td>{2}</td>
+                            </tr>""".format(v["url"], v["name"], v["snippet"])
+                        for v in results["webPages"]["value"]])
+        table = "<table>{0}</table>".format(rows)
+        return table
+    
+    
+def bing_query2(line):
+    # # Websearch with Bing Api
+    webcheck = list()
+    webcheck.append({'role': 'system', 'content': "You are a sub-module for an Autonomous Ai-Chatbot. You are one of many agents in a chain. Your task is to decide if a web-search is needed in order to complete the given task. If a websearch is needed, print: YES.  If a web-search is not needed, print: NO."})
+    webcheck.append({'role': 'user', 'content': "Hello, how are you today?"})
+    webcheck.append({'role': 'assistant', 'content': "NO"})
+    webcheck.append({'role': 'user', 'content': "%s" % line})
+    webyesno = chatgptyesno_completion(webcheck)
+    if webyesno == 'YES':
+        results = bing_search(line)
+        rows = "\n".join(["""<tr>
+                            <td><a href=\"{0}\">{1}</a></td>
+                            <td>{2}</td>
+                            </tr>""".format(v["url"], v["name"], v["snippet"])
+                        for v in results["webPages"]["value"]])
+        table = "<table>{0}</table>".format(rows)
+    else:
+        table = "No Websearch Needed"
+    return table
 
 
 
@@ -118,6 +173,7 @@ if __name__ == '__main__':
     master_tasklist = list()
     tasklist = list()
     tasklist_log = list()
+    webcheck = list()
     counter = 0
     if not os.path.exists('logs/complete_chat_logs'):
         os.makedirs('logs/complete_chat_logs')
@@ -193,14 +249,7 @@ if __name__ == '__main__':
                             conversation.append({'role': 'user', 'content': "Task list:\n%s" % master_tasklist_output}),
                             conversation.append({'role': 'assistant', 'content': "Bot %s: I have studied the given tasklist.  What is my assigned task?" % task_counter}),
                             conversation.append({'role': 'user', 'content': "Bot %s's Assigned task: %s" % (task_counter, line)}),
-                            # # Websearch with Bing Api
-                            results := bing_search(line),
-                            rows := "\n".join(["""<tr>
-                                                <td><a href=\"{0}\">{1}</a></td>
-                                                <td>{2}</td>
-                                                </tr>""".format(v["url"], v["name"], v["snippet"])
-                                            for v in results["webPages"]["value"]]),
-                            table := "<table>{0}</table>".format(rows),
+                            table := bing_query2(line),
                             # # Update Conversation with Websearch
                             conversation.append({'role': 'assistant', 'content': "WEBSEARCH: %s" % table}),
                             conversation.append({'role': 'user', 'content': "Bot %s Task Reinitialization: %s" % (task_counter, line)}),
