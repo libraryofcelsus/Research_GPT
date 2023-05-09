@@ -8,6 +8,8 @@ Version 0.11
 
 -Research GPT now decides for itself if it should conduct a web search or not.
 
+**Side Project of the Aetherius Ai Assistant**
+
 Aetherius GitHub: https://github.com/libraryofcelsus/Aetherius_AI_Assistant
 
 ![Example](http://www.libraryofcelsus.com/wp-content/uploads/2023/05/Research_GPT-1.gif)
