@@ -11,6 +11,8 @@ Version 0.12
 
 -Redid the way if conditions were done to avoid multi-threading issues.
 
+-Added parameter for limiting answers per task.
+
 **Side Project of the Aetherius Ai Assistant**
 
 Aetherius GitHub: https://github.com/libraryofcelsus/Aetherius_AI_Assistant
