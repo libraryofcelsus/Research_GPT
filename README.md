@@ -5,9 +5,11 @@ Simple example of autonomous research ran in parallel for an eventual cluster co
 
 **Change Log**
 
-Version 0.11
+Version 0.12
 
 -Research GPT now decides for itself if it should conduct a web search or not.  Also serves as a showcase on how to implement simple tools.
+
+-Redid the way if conditions were done to avoid multi-threading issues.
 
 **Side Project of the Aetherius Ai Assistant**
 
