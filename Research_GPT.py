@@ -75,7 +75,25 @@ def chatgpt35_completion(messages, model="gpt-3.5-turbo", temp=0.3):
             sleep(2 ** (retry - 1) * 5)
             
             
-def chatgptyesno_completion(messages, model="gpt-3.5-turbo", temp=0.1):
+def chatgpt_tasklist_completion(messages, model="gpt-4", temp=0.3):
+    max_retry = 7
+    retry = 0
+    while True:
+        try:
+            response = openai.ChatCompletion.create(model=model, messages=messages)
+            text = response['choices'][0]['message']['content']
+            temperature = temp
+            return text
+        except Exception as oops:
+            retry += 1
+            if retry >= max_retry:
+                print(f"Exiting due to an error in ChatGPT: {oops}")
+                exit(1)
+            print(f'Error communicating with OpenAI: "{oops}" - Retrying in {2 ** (retry - 1) * 5} seconds...')
+            sleep(2 ** (retry - 1) * 5)
+
+
+def chatgptyesno_completion(messages, model="gpt-3.5-turbo", temp=0.0):
     max_retry = 7
     retry = 0
     while True:
@@ -95,72 +113,39 @@ def chatgptyesno_completion(messages, model="gpt-3.5-turbo", temp=0.1):
                 exit(1)
             print(f'Error communicating with OpenAI: "{oops}" - Retrying in {2 ** (retry - 1) * 5} seconds...')
             sleep(2 ** (retry - 1) * 5)
-            
-            
-def chatgpt_tasklist_completion(messages, model="gpt-4", temp=0.3):
-    max_retry = 7
-    retry = 0
-    while True:
-        try:
-            response = openai.ChatCompletion.create(model=model, messages=messages)
-            text = response['choices'][0]['message']['content']
-            temperature = temp
-            return text
-        except Exception as oops:
-            retry += 1
-            if retry >= max_retry:
-                print(f"Exiting due to an error in ChatGPT: {oops}")
-                exit(1)
-            print(f'Error communicating with OpenAI: "{oops}" - Retrying in {2 ** (retry - 1) * 5} seconds...')
-            sleep(2 ** (retry - 1) * 5)
 
 
-def bing_search(query):
-    subscription_key = open_file('key_bing.txt')
-    assert subscription_key
-    search_url = "https://api.bing.microsoft.com/v7.0/search"
-
-    headers = {"Ocp-Apim-Subscription-Key": subscription_key}
-    params = {"q": query, "textDecorations": True, "textFormat": "HTML"}
-
-    response = requests.get(search_url, headers=headers, params=params)
-    response.raise_for_status()
-    search_results = response.json()
-    return search_results
-    
-    
-def bing_query(webyesno):
-    if webyesno == 'YES':
-        print('Websearch Needed')
-        results = bing_search(line)
+def bing_api(line):
+    try:
+        # Perform the Bing search
+        subscription_key = open_file('key_bing.txt')
+        assert subscription_key
+        search_url = "https://api.bing.microsoft.com/v7.0/search"
+        search_term = f"{line}"
+        headers = {"Ocp-Apim-Subscription-Key": subscription_key}
+        params = {"q": search_term, "textDecorations": True, "textFormat": "HTML", "answerCount": "5", "count": "4"}
+        response = requests.get(search_url, headers=headers, params=params)
+        response.raise_for_status()
+        search_results = response.json()
+    #    print(search_results)
+        # Format the results
         rows = "\n".join(["""<tr>
-                            <td><a href=\"{0}\">{1}</a></td>
-                            <td>{2}</td>
-                            </tr>""".format(v["url"], v["name"], v["snippet"])
-                        for v in results["webPages"]["value"]])
+                               <td><a href=\"{0}\">{1}</a></td>
+                               <td>{2}</td>
+                             </tr>""".format(v["url"], v["name"], v["snippet"])
+                            for v in search_results["webPages"]["value"]])
         table = "<table>{0}</table>".format(rows)
         return table
+    except Exception as e:
+        print(e)
+        table = "Error"
+        return table
+
+def fail():
+    print('')
+    fail = "Not Needed"
+    return fail
     
-    
-def bing_query2(line):
-    # # Websearch with Bing Api
-    webcheck = list()
-    webcheck.append({'role': 'system', 'content': "You are a sub-module for an Autonomous Ai-Chatbot. You are one of many agents in a chain. Your task is to decide if a web-search is needed in order to complete the given task. If a websearch is needed, print: YES.  If a web-search is not needed, print: NO."})
-    webcheck.append({'role': 'user', 'content': "Hello, how are you today?"})
-    webcheck.append({'role': 'assistant', 'content': "NO"})
-    webcheck.append({'role': 'user', 'content': "%s" % line})
-    webyesno = chatgptyesno_completion(webcheck)
-    if webyesno == 'YES':
-        results = bing_search(line)
-        rows = "\n".join(["""<tr>
-                            <td><a href=\"{0}\">{1}</a></td>
-                            <td>{2}</td>
-                            </tr>""".format(v["url"], v["name"], v["snippet"])
-                        for v in results["webPages"]["value"]])
-        table = "<table>{0}</table>".format(rows)
-    else:
-        table = "No Websearch Needed"
-    return table
 
 
 
@@ -241,7 +226,7 @@ if __name__ == '__main__':
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 futures = [
                     executor.submit(
-                        lambda line, task_counter, conversation, tasklist_completion: (
+                        lambda line, task_counter, conversation, webcheck, tasklist_completion: (
                             # # Update Final Response Module with Task
                             tasklist_completion.append({'role': 'user', 'content': "ASSIGNED TASK:\n%s" % line}),
                             # # Start Sub-Module for asynchronous task completion
@@ -249,7 +234,13 @@ if __name__ == '__main__':
                             conversation.append({'role': 'user', 'content': "Task list:\n%s" % master_tasklist_output}),
                             conversation.append({'role': 'assistant', 'content': "Bot %s: I have studied the given tasklist.  What is my assigned task?" % task_counter}),
                             conversation.append({'role': 'user', 'content': "Bot %s's Assigned task: %s" % (task_counter, line)}),
-                            table := bing_query2(line),
+                            webcheck.append({'role': 'system', 'content': f"You are a sub-module for an Autonomous Ai-Chatbot. You are one of many agents in a chain. Your task is to decide if a web-search is needed in order to complete the given task. Only recent or niche information needs to be searched. Do not search for any information pertaining to the user, {username}, or the main bot, {bot_name}.   If a websearch is needed, print: YES.  If a web-search is not needed, print: NO."}),
+                            webcheck.append({'role': 'user', 'content': "Hello, how are you today?"}),
+                            webcheck.append({'role': 'assistant', 'content': "NO"}),
+                            # # Check if websearch is needed
+                            webcheck.append({'role': 'user', 'content': f"{line}"}),
+                            web1 := chatgptyesno_completion(webcheck),
+                            table := bing_api(line) if web1 =='YES' else fail(),
                             # # Update Conversation with Websearch
                             conversation.append({'role': 'assistant', 'content': "WEBSEARCH: %s" % table}),
                             conversation.append({'role': 'user', 'content': "Bot %s Task Reinitialization: %s" % (task_counter, line)}),
@@ -266,7 +257,7 @@ if __name__ == '__main__':
                             print(table),
                             print(task_completion),
                         ) if line != "None" else tasklist_completion,
-                        line, task_counter, conversation.copy(), []
+                        line, task_counter, webcheck.copy(), conversation.copy(), []
                     )
                     for task_counter, line in enumerate(lines)
                 ]
